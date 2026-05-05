@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マイアラーム</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a12;
+      --surface: #12121e;
+      --surface2: #1c1c2e;
+      --border: #2a2a40;
+      --accent: #7c6af7;
+      --accent2: #a78bfa;
+      --red: #f87171;
+      --green: #4ade80;
+      --text: #e2e2f0;
+      --muted: #6b6b8a;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* 背景の光彩 */
+    body::before {
+      content: '';
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(124,106,247,0.12) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 48px 56px;
+      width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+      position: relative;
+    }
+
+    /* 時計エリア */
+    .clock-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .clock {
+      font-family: 'DM Mono', monospace;
+      font-size: 4.5rem;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .date {
+      font-size: 0.8rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* 区切り線 */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* アラームエリア */
+    .alarm-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    input[type="time"] {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 300;
+      padding: 14px 18px;
+      border-radius: 14px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    input[type="time"]:focus { border-color: var(--accent); }
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.6);
+      cursor: pointer;
+    }
+
+    .btn-set {
+      padding: 14px 24px;
+      border-radius: 14px;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--accent);
+      color: #fff;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-set:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-set:active { transform: translateY(0); }
+
+    .btn-set.cancel {
+      background: var(--surface2);
+      color: var(--red);
+      border: 1px solid var(--border);
+    }
+
+    .btn-set.cancel:hover { background: rgba(248,113,113,0.1); }
+
+    /* ステータスバッジ */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-height: 24px;
+      transition: color 0.3s;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+
+    .status-badge.on .status-dot { background: var(--green); }
+    .status-badge.on { color: var(--green); }
+
+    .status-badge.ringing .status-dot {
+      background: var(--red);
+      animation: blink 0.5s ease-in-out infinite alternate;
+    }
+    .status-badge.ringing { color: var(--red); }
+
+    @keyframes blink { to { opacity: 0.2; } }
+
+    /* 停止ボタン */
+    .btn-stop {
+      display: none;
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, #f87171, #fb923c);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: opacity 0.2s, transform 0.1s;
+      animation: pulse-btn 1s ease-in-out infinite alternate;
+    }
+
+    .btn-stop:hover { opacity: 0.9; }
+    .btn-stop:active { transform: scale(0.98); }
+
+    @keyframes pulse-btn {
+      from { box-shadow: 0 0 0 0 rgba(248,113,113,0.4); }
+      to   { box-shadow: 0 0 0 12px rgba(248,113,113,0); }
+    }
+
+    /* リングアニメーション（鳴っているとき） */
+    .card.ringing {
+      animation: shake 0.4s ease-in-out infinite;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-3px); }
+      75%      { transform: translateX(3px); }
+    }
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+
+  <div class="clock-wrap">
+    <div class="clock" id="clock">00:00:00</div>
+    <div class="date" id="dateLabel"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="alarm-section">
+    <span class="section-label">Alarm</span>
+
+    <div class="input-row">
+      <input type="time" id="alarmTime" />
+      <button class="btn-set" id="toggleBtn">Set</button>
+    </div>
+
+    <div class="status-badge" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">Not set</span>
+    </div>
+
+    <button class="btn-stop" id="stopBtn">Stop Alarm</button>
+  </div>
+
+</div>
+
+<script>
+  const clockEl    = document.getElementById('clock');
+  const dateEl     = document.getElementById('dateLabel');
+  const alarmInput = document.getElementById('alarmTime');
+  const toggleBtn  = document.getElementById('toggleBtn');
+  const statusBadge= document.getElementById('statusBadge');
+  const statusText = document.getElementById('statusText');
+  const stopBtn    = document.getElementById('stopBtn');
+  const card       = document.getElementById('card');
+
+  let alarmOn = false, alarmTime = '', ringing = false;
+  let audioCtx = null, ringerNodes = [];
+
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function pad(n) { return String(n).padStart(2,'0'); }
+
+  function tick() {
+    const now = new Date();
+    const hh = pad(now.getHours()), mm = pad(now.getMinutes()), ss = pad(now.getSeconds());
+    clockEl.textContent = `${hh}:${mm}:${ss}`;
+    dateEl.textContent  = `${DAYS[now.getDay()]}  ${MONTHS[now.getMonth()]} ${now.getDate()}`;
+
+    if (alarmOn && !ringing && `${hh}:${mm}` === alarmTime && ss === '00') startRinging();
+  }
+
+  function startRinging() {
+    ringing = true;
+    statusBadge.className = 'status-badge ringing';
+    statusText.textContent = 'Wake up!';
+    stopBtn.style.display = 'block';
+    card.classList.add('ringing');
+    ring();
+  }
+
+  function ring() {
+    if (!ringing) return;
+    if (!audioCtx) audioCtx = new AudioContext();
+    [0, 0.25, 0.5, 0.75].forEach(offset => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.value = 880; osc.type = 'sine';
+      const t = audioCtx.currentTime + offset;
+      gain.gain.setValueAtTime(0.4, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.start(t); osc.stop(t + 0.18);
+      ringerNodes.push(osc);
+    });
+    setTimeout(() => { if (ringing) ring(); }, 1200);
+  }
+
+  function stopRinging() {
+    ringing = false;
+    ringerNodes.forEach(n => { try { n.stop(); } catch(_){} });
+    ringerNodes = [];
+    alarmOn = false;
+    card.classList.remove('ringing');
+    toggleBtn.textContent = 'Set';
+    toggleBtn.className = 'btn-set';
+    statusBadge.className = 'status-badge';
+    statusText.textContent = 'Not set';
+    stopBtn.style.display = 'none';
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    if (ringing) { stopRinging(); return; }
+    if (alarmOn) {
+      alarmOn = false;
+      toggleBtn.textContent = 'Set';
+      toggleBtn.className = 'btn-set';
+      statusBadge.className = 'status-badge';
+      statusText.textContent = 'Not set';
+      return;
+    }
+    const val = alarmInput.value;
+    if (!val) { statusText.textContent = 'Pick a time first'; return; }
+    alarmTime = val; alarmOn = true;
+    toggleBtn.textContent = 'Cancel';
+    toggleBtn.className = 'btn-set cancel';
+    statusBadge.className = 'status-badge on';
+    statusText.textContent = `Set for ${val}`;
+  });
+
+  stopBtn.addEventListener('click', stopRinging);
+  setInterval(tick, 1000);
+  tick();
+</script>
+</body>
+</html>
