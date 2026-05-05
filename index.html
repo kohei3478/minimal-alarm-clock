@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Alarm</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+    }
+
+    .clock {
+      font-size: 5rem;
+      font-weight: 200;
+      letter-spacing: 0.05em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .alarm-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .alarm-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #666;
+    }
+
+    .alarm-input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="time"] {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #fff;
+      font-size: 1.5rem;
+      padding: 10px 16px;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="time"]:focus {
+      border-color: #555;
+    }
+
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.5;
+      cursor: pointer;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    #toggleBtn {
+      background: #fff;
+      color: #000;
+      font-weight: 600;
+    }
+
+    #toggleBtn.active {
+      background: #ff4444;
+      color: #fff;
+    }
+
+    #toggleBtn:hover {
+      opacity: 0.85;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: #555;
+      min-height: 1.2em;
+      transition: color 0.3s;
+    }
+
+    .status.on {
+      color: #4caf50;
+    }
+
+    .status.ringing {
+      color: #ff4444;
+      animation: pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 1; }
+      to   { opacity: 0.4; }
+    }
+
+    #stopBtn {
+      display: none;
+      background: #ff4444;
+      color: #fff;
+      font-size: 1rem;
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    #stopBtn:hover {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="clock" id="clock">00:00:00</div>
+
+  <div class="alarm-section">
+    <span class="alarm-label">Alarm</span>
+    <div class="alarm-input-row">
+      <input type="time" id="alarmTime" />
+      <button id="toggleBtn">Set</button>
+    </div>
+    <div class="status" id="status">--</div>
+    <button id="stopBtn">Stop Alarm</button>
+  </div>
+
+  <script>
+    const clockEl   = document.getElementById('clock');
+    const alarmInput = document.getElementById('alarmTime');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const statusEl  = document.getElementById('status');
+    const stopBtn   = document.getElementById('stopBtn');
+
+    let alarmOn      = false;
+    let alarmTime    = '';
+    let ringing      = false;
+    let audioCtx     = null;
+    let ringerNodes  = [];
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function tick() {
+      const now = new Date();
+      const hh  = pad(now.getHours());
+      const mm  = pad(now.getMinutes());
+      const ss  = pad(now.getSeconds());
+      clockEl.textContent = `${hh}:${mm}:${ss}`;
+
+      if (alarmOn && !ringing && `${hh}:${mm}` === alarmTime && ss === '00') {
+        startRinging();
+      }
+    }
+
+    function startRinging() {
+      ringing = true;
+      statusEl.textContent = 'Wake up!';
+      statusEl.className   = 'status ringing';
+      stopBtn.style.display = 'block';
+      ring();
+    }
+
+    function ring() {
+      if (!ringing) return;
+      if (!audioCtx) audioCtx = new AudioContext();
+
+      const beepPattern = [0, 0.25, 0.5, 0.75];
+      beepPattern.forEach(offset => {
+        const osc  = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        const start = audioCtx.currentTime + offset;
+        gain.gain.setValueAtTime(0.4, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
+        osc.start(start);
+        osc.stop(start + 0.18);
+        ringerNodes.push(osc);
+      });
+
+      setTimeout(() => { if (ringing) ring(); }, 1200);
+    }
+
+    function stopRinging() {
+      ringing = false;
+      ringerNodes.forEach(n => { try { n.stop(); } catch(_) {} });
+      ringerNodes = [];
+      alarmOn = false;
+      toggleBtn.textContent = 'Set';
+      toggleBtn.classList.remove('active');
+      statusEl.textContent = '--';
+      statusEl.className   = 'status';
+      stopBtn.style.display = 'none';
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (ringing) { stopRinging(); return; }
+
+      if (alarmOn) {
+        alarmOn = false;
+        toggleBtn.textContent = 'Set';
+        toggleBtn.classList.remove('active');
+        statusEl.textContent = '--';
+        statusEl.className   = 'status';
+        return;
+      }
+
+      const val = alarmInput.value;
+      if (!val) { statusEl.textContent = 'Pick a time first.'; statusEl.className = 'status'; return; }
+
+      alarmTime = val;
+      alarmOn   = true;
+      toggleBtn.textContent = 'Cancel';
+      toggleBtn.classList.add('active');
+      statusEl.textContent = `Set for ${val}`;
+      statusEl.className   = 'status on';
+    });
+
+    stopBtn.addEventListener('click', stopRinging);
+
+    setInterval(tick, 1000);
+    tick();
+  </script>
+</body>
+</html>
